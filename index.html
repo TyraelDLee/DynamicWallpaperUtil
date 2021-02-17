@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="bg.css" rel="stylesheet" type="text/css">
+    <script src="Jquery-3.5.1.js"></script>
+</head>
+<script>
+    // Animation parameters
+    var opc = 1.0, index = 1, next = -1;
+    const fade = 1/250.0;
+    var anim;
+    var finish = 0;
+    var delay = 200;
+
+    var la = 0, lo = 0;
+    var JSON;
+
+    // Get location and load JSON timetable
+    $(document).ready(function (){
+        $.ajax({
+            url: "http://ip-api.com/json/",
+            type: "GET",
+            dataType: "json",
+            json: "callback",
+            success: function (data){
+                la = data["lat"];
+                lo = data["lon"];
+            }
+        })
+        $.ajax({
+            url: "./background/TimeTable.json",
+            type: "GET",
+            dataType: "json",
+            success: function (data){
+                JSON = data["dict"];
+            }
+        })
+    });
+
+
+    function timeLocation(){
+
+        var time = new Date();
+
+        // get day light
+        var TimeOffset = -(new Date(2021,1,1).getTimezoneOffset()<new Date(2021,6,1).getTimezoneOffset()?new Date(2021,6,1).getTimezoneOffset():new Date(2021,1,1).getTimezoneOffset());
+        //
+
+        // Calculation
+        let numOfDay = Math.ceil((new Date() - new Date(new Date().getFullYear().toString()))/(24*60*60*1000));
+        numOfDay = numOfDay - (79.6764 + 0.2422 *(time.getFullYear() - 1985) - Math.ceil((time.getFullYear()-1985)/4.0));
+        let b = 6.28318 * (numOfDay) / 365.2422;
+        let Declination = 0.3723+23.2567 * Math.sin(b) + 0.1149* Math.sin(2*b) - 0.1712* Math.sin(3*b) -
+            0.758* Math.cos(b)+0.3656* Math.cos(2*b)+0.0201* Math.cos(3*b);
+        let ST = ((time.getUTCHours()+TimeOffset/60)%24 * 60 + time.getMinutes() +
+            (0.0028 - 1.9857 * Math.sin(b) + 9.9059 * Math.sin(2 * b) - 7.0924 * Math.cos(b) - 0.6882 * Math.cos(2 * b)))/60.0;
+        let SolarHourAngle = 15.0 * (ST - 12)
+        // Solar Elevation
+        var Alt = R2D(-Math.asin(
+            Math.cos(D2R(SolarHourAngle)) * Math.cos(D2R(Declination)) * Math.cos(D2R(lo))
+            + Math.sin(D2R(Declination)) * Math.sin(D2R(lo))
+        ));
+        // Solar Azimuth
+        var Azi1 = R2D(Math.acos(
+            (Math.sin(D2R(Declination)) * Math.cos(D2R(la)) - Math.cos(D2R(SolarHourAngle)) *
+                Math.cos(D2R(Declination)) * Math.sin(D2R(la))) / (Math.cos(D2R(Alt)))
+        ));
+        var Azi0 = R2D(Math.acos(
+            (Math.sin(D2R(Declination)) - Math.sin(D2R(Alt)) * Math.sin(D2R(la))) /
+            (Math.cos(D2R(Alt)) * Math.cos(D2R(la)))
+        ));
+
+        var Azi = SolarHourAngle<0.0?(Azi0>=0.0&&Azi0<=360?Azi0:Azi1>=0.0&&Azi1<=360?Azi1:0):
+            (Azi0>=0.0&&Azi0<=360?360-Azi0:Azi1>=0.0&&Azi1<=360?360-Azi1:360);
+
+        calculationDis(Alt, Azi);
+
+        if(index!==next){
+            finish = 0;
+            delay = 200;
+            document.getElementById("fore").style.background = "url(background/"+(next)+".png) no-repeat fixed center";
+            document.getElementById("fore").style.backgroundSize = "cover";
+            document.getElementById("fore").style.zIndex = "-1";
+            anim = window.setTimeout(setBG, 1);
+        }
+
+
+        // Test part
+        // let show = document.getElementById("time");
+        // let lat = document.getElementById("lat");//纬度
+        // let lon = document.getElementById("lon");//经度
+        // let Solar = document.getElementById("Solar_Info");
+        // let Pic = document.getElementById("Pic info");
+        // show.innerHTML = "Test mode " + time.getFullYear() + "-" + (time.getMonth() + 1) + "-" + time.getDate() +
+        //     "-" + time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds() + "\nUTC Hour" + time.getUTCHours()+
+        //     " N0:" + (79.6764 + 0.2422 *(time.getFullYear() - 1985) - Math.ceil((time.getFullYear()-1985)/4.0)) +
+        //     " Dt:" + (0.0028 - 1.9857 * Math.sin(b) + 9.9059 * Math.sin(2 * b) - 7.0924 * Math.cos(b) - 0.6882 * Math.cos(2 * b));
+        // Solar.innerHTML = " Solar Hour Angle " + SolarHourAngle + " St " + ST
+        //     + " Alt angle " + Alt + " Azi angle " + Azi + " " + Azi1 + " "+" Dec " + Declination+" b:"+b;
+        // lat.innerHTML = "lat "+la;
+        // lon.innerHTML = "lon "+lo;
+        // Pic.innerHTML = " index:" + index + " next:" + next;
+
+        console.log(
+            time.getFullYear() + "-" + (time.getMonth()+1) + "-" + time.getDate()+
+            "-" + time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds()+"\nUTC Hour"+
+            time.getUTCHours() + " Solar Hour Angle "+ SolarHourAngle + " St "+ST
+            +" Alt angle "+Alt + " Azi angle " + Azi +" "+Azi1+ " Dec "+Declination +" index:"+index
+            +" next:"+next
+        );
+        time = 0;
+    }
+
+    function calculationDis(alt, azi){
+        var diff = 1000, s;
+        var data = [];
+        var index = 0;
+        if(alt<-9 && azi > 180)
+            next = next = (Number(JSON[JSON.length-1].i)+1);
+        else{
+            for (let i = 0; i < JSON.length; i++) {
+                if (Math.abs(JSON[i].a - alt)<diff){
+                    diff = Math.abs(JSON[i].a - alt);
+                    s = JSON[i].a;
+                }
+            }
+            for (let i = 0; i < JSON.length; i++) {
+                if(JSON[i].a === s){
+                    data[index] = JSON[i];
+                    index++;
+                }
+            }
+            diff = 1000;
+            for (let i = 0; i < data.length; i++) {
+                if (Math.abs(data[i].z - azi)<diff){
+                    diff = Math.abs(data[i].z - azi);
+                    s = data[i].z;
+                }
+            }
+            for (let i = 0; i < data.length; i++) {
+                if(data[i].z === s)
+                    next = (Number(data[i].i)+1);
+            }
+            console.log(diff+" "+data[0].z+" "+data[1].z)
+            console.log("data len:"+data.length+", next:"+next);
+        }
+
+
+
+    }
+
+    function setBG(){
+        if(delay===0){
+            if(finish===0){
+                opc-=fade;
+                fadeAnim(index,opc)
+                if(opc<=0.0){
+                    finish=1;
+                    index = next;
+                }
+                window.setTimeout(setBG, 1);
+            }
+            else {
+                opc=1.0;
+                document.getElementById("back").style.background = "url(background/" + index + ".png) no-repeat center"
+                document.getElementById("back").style.opacity = "1.0";
+            }
+            document.getElementById("back").style.backgroundSize = "cover";
+        }else {
+            delay--;
+            window.setTimeout(setBG, 1);
+        }
+        console.log(delay)
+    }
+
+    function fadeAnim(backGround, value){
+        document.getElementById("back").style.background = "url(background/"+backGround+".png) no-repeat center"
+        document.getElementById("back").style.opacity = value;
+    }
+
+
+    function D2R(degree){
+        return degree * 3.14159 / 180.0
+    }
+
+    function R2D(radius){
+        return  radius / 3.14159 * 180.0;
+    }
+    window.setInterval(timeLocation,1000);
+</script>
+<body>
+<div class="background" id="back" style="background: url(background/1.png) no-repeat center; background-size: cover">
+    <div id="time"></div>
+    <div id="Solar_Info"></div>
+    <div id="lat"></div>
+    <div id="lon"></div>
+    <div id="Pic info"></div>
+</div>
+<div class="background" id="fore" style="background: url(background/1.png) no-repeat center; background-size: cover"></div>
+</body>
+</html>
