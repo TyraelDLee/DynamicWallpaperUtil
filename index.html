@@ -41,7 +41,9 @@
 
 
     function timeLocation(){
-
+        // Test use
+        // la = -53.48;
+        // lo = -0.84;
         var time = new Date();
 
         // get day light
@@ -49,31 +51,44 @@
         //
 
         // Calculation
-        let numOfDay = Math.ceil((new Date() - new Date(new Date().getFullYear().toString()))/(24*60*60*1000));
-        numOfDay = numOfDay - (79.6764 + 0.2422 *(time.getFullYear() - 1985) - Math.ceil((time.getFullYear()-1985)/4.0));
-        let b = 6.28318 * (numOfDay) / 365.2422;
-        let Declination = 0.3723+23.2567 * Math.sin(b) + 0.1149* Math.sin(2*b) - 0.1712* Math.sin(3*b) -
-            0.758* Math.cos(b)+0.3656* Math.cos(2*b)+0.0201* Math.cos(3*b);
-        let ST = ((time.getUTCHours()+TimeOffset/60)%24 * 60 + time.getMinutes() +
-            (0.0028 - 1.9857 * Math.sin(b) + 9.9059 * Math.sin(2 * b) - 7.0924 * Math.cos(b) - 0.6882 * Math.cos(2 * b)))/60.0;
-        let SolarHourAngle = 15.0 * (ST - 12)
+        // N0 = 79.6764 + 0.2422 * (Year - 1985) - INT(0.25 * (Year - 1985))
+        // dN = N - N0
+        let numOfDay = Math.ceil((new Date() - new Date(new Date().getFullYear().toString()))/(24*60*60*1000))-1;
+        let N0 = (79.6764 + 0.2422 *(time.getFullYear() - 1985) - Math.ceil((time.getFullYear()-1985)/4.0));
+        let dN = (Math.abs(lo) / 15.0 + time.getHours() + time.getMinutes() / 60.0);
+        if(lo<0)
+            dN = (0 - dN) / 24.0;
+        else
+            dN = dN / 24.0;
+        let theta = 2*Math.PI * (numOfDay + dN - N0) / 365.242;
+        let Declination = 0.3723+23.2567 * Math.sin(theta) + 0.1149* Math.sin(theta*2) - 0.1712* Math.sin(theta*3) -
+            0.758* Math.cos(theta)+0.3656* Math.cos(theta*2)+0.0201* Math.cos(theta*3);
+        let TrueSunTime = ((time.getUTCHours()+TimeOffset/60)%24 * 60 + time.getMinutes() +
+            (0.0028 - 1.9857 * Math.sin(theta) + 9.9059 * Math.sin(2 * theta) - 7.0924 * Math.cos(theta)
+                - 0.6882 * Math.cos(2 * theta)))/60.0;
+        console.log(time.getUTCHours())
+        let SolarHourAngle = 15.0 * (TrueSunTime - 12);
         // Solar Elevation
-        var Alt = R2D(-Math.asin(
-            Math.cos(D2R(SolarHourAngle)) * Math.cos(D2R(Declination)) * Math.cos(D2R(lo))
-            + Math.sin(D2R(Declination)) * Math.sin(D2R(lo))
+        var Alt = R2D(Math.asin(
+            Math.cos(D2R(SolarHourAngle)) * Math.cos(D2R(Declination)) * Math.cos(D2R(la))
+            + Math.sin(D2R(Declination)) * Math.sin(D2R(la))
         ));
         // Solar Azimuth
-        var Azi1 = R2D(Math.acos(
-            (Math.sin(D2R(Declination)) * Math.cos(D2R(la)) - Math.cos(D2R(SolarHourAngle)) *
-                Math.cos(D2R(Declination)) * Math.sin(D2R(la))) / (Math.cos(D2R(Alt)))
-        ));
+        let A = ((Math.sin(D2R(Alt)) * Math.sin(D2R(la)) - Math.sin(D2R(Declination))) /
+            Math.cos(D2R(Alt)) * Math.cos(la));
+        var Azi = 0;
+        Azi = (SolarHourAngle<=0)?R2D(Math.acos(A)):360-R2D(Math.acos(A));
+        //     R2D(Math.acos(
+        //     (Math.sin(D2R(SolarHourAngle)) * Math.cos(D2R(la)) - Math.cos(D2R(Declination)) *
+        //         Math.cos(D2R(Declination)) * Math.sin(D2R(la))) / (Math.cos(D2R(Alt)))
+        // ));
         var Azi0 = R2D(Math.acos(
             (Math.sin(D2R(Declination)) - Math.sin(D2R(Alt)) * Math.sin(D2R(la))) /
             (Math.cos(D2R(Alt)) * Math.cos(D2R(la)))
         ));
 
-        var Azi = SolarHourAngle<0.0?(Azi0>=0.0&&Azi0<=360?Azi0:Azi1>=0.0&&Azi1<=360?Azi1:0):
-            (Azi0>=0.0&&Azi0<=360?360-Azi0:Azi1>=0.0&&Azi1<=360?360-Azi1:360);
+        // var Azi = SolarHourAngle<0.0?(Azi0>=0.0&&Azi0<=360?Azi0:Azi1>=0.0&&Azi1<=360?Azi1:0):
+        //     (Azi0>=0.0&&Azi0<=360?360-Azi0:Azi1>=0.0&&Azi1<=360?360-Azi1:360);
 
         calculationDis(Alt, Azi);
 
@@ -88,26 +103,26 @@
 
 
         // Test part
-        // let show = document.getElementById("time");
-        // let lat = document.getElementById("lat");//纬度
-        // let lon = document.getElementById("lon");//经度
-        // let Solar = document.getElementById("Solar_Info");
-        // let Pic = document.getElementById("Pic info");
-        // show.innerHTML = "Test mode " + time.getFullYear() + "-" + (time.getMonth() + 1) + "-" + time.getDate() +
-        //     "-" + time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds() + "\nUTC Hour" + time.getUTCHours()+
-        //     " N0:" + (79.6764 + 0.2422 *(time.getFullYear() - 1985) - Math.ceil((time.getFullYear()-1985)/4.0)) +
-        //     " Dt:" + (0.0028 - 1.9857 * Math.sin(b) + 9.9059 * Math.sin(2 * b) - 7.0924 * Math.cos(b) - 0.6882 * Math.cos(2 * b));
-        // Solar.innerHTML = " Solar Hour Angle " + SolarHourAngle + " St " + ST
-        //     + " Alt angle " + Alt + " Azi angle " + Azi + " " + Azi1 + " "+" Dec " + Declination+" b:"+b;
-        // lat.innerHTML = "lat "+la;
-        // lon.innerHTML = "lon "+lo;
-        // Pic.innerHTML = " index:" + index + " next:" + next;
+        let show = document.getElementById("time");
+        let lat = document.getElementById("lat");//纬度
+        let lon = document.getElementById("lon");//经度
+        let Solar = document.getElementById("Solar_Info");
+        let Pic = document.getElementById("Pic info");
+        show.innerHTML = "Test mode " + time.getFullYear() + "-" + (time.getMonth() + 1) + "-" + time.getDate() +
+            "-" + time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds() + "\nUTC Hour" + time.getUTCHours()+
+            " N0:" + N0 +
+            " dT:" + (0.0028 - 1.9857 * Math.sin(theta) + 9.9059 * Math.sin(2 * theta) - 7.0924 * Math.cos(theta) - 0.6882 * Math.cos(2 * theta));
+        Solar.innerHTML = " Solar Hour Angle " + SolarHourAngle + " St " + TrueSunTime
+            + " Alt angle " + Alt + " Azi angle " + Azi + " " + A + " "+" Dec " + Declination+" b:"+theta;
+        lat.innerHTML = "lat "+la;
+        lon.innerHTML = "lon "+lo;
+        Pic.innerHTML = " index:" + index + " next:" + next;
 
         console.log(
             time.getFullYear() + "-" + (time.getMonth()+1) + "-" + time.getDate()+
             "-" + time.getHours() + ":" + time.getMinutes() + ":" + time.getSeconds()+"\nUTC Hour"+
-            time.getUTCHours() + " Solar Hour Angle "+ SolarHourAngle + " St "+ST
-            +" Alt angle "+Alt + " Azi angle " + Azi +" "+Azi1+ " Dec "+Declination +" index:"+index
+            time.getUTCHours() + " Solar Hour Angle "+ SolarHourAngle + " St "+TrueSunTime
+            +" Alt angle "+Alt + " Azi angle " + Azi +" "+Azi+ " Dec "+Declination +" index:"+index
             +" next:"+next
         );
         time = 0;
