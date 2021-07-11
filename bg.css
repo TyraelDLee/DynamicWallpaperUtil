@@ -1,23 +1,30 @@
-/*body{*/
-/*    background: #FFFFFF no-repeat fixed center center;*/
-/*}*/
+/***
+ * Copyright Copyright 2021 Tyrael Lee, Y. LI
+ ***/
+@keyframes fade-out {
+    0% {opacity: 1.0}
+    100% {opacity: 0.0}
+}
 
-/*body{*/
-/*    background-size: cover;*/
-/*}*/
 
 *{
     padding:0;
     margin:0;
 }
+
+html,body{
+    margin: 0;
+    height:100%;
+}
+
 .background{
     width:100%;
     height:100%;
-    margin:0 auto;
-    top: 0;
+    opacity: 1.0;
     position: absolute;
 }
 
-#fore{
-    z-index: -1;
+.background-fadeOut{
+    animation-name: fade-out;
+    animation-duration: 1s;
 }
