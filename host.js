@@ -4,12 +4,7 @@
 
 const FOREGROUND = document.createElement("div");
 const BACKGROUND = document.createElement("div");
-var opc = 1.0, index = 1, next = -1;
-const fade = 1/250.0;
-var anim;
-var finish = 0;
-var delay = 200;
-
+var index = 1, next = -1;
 var la = 0, lo = 0;
 var JSON;
 
@@ -92,12 +87,10 @@ function timeLocation(){
     calculationDis(Alt, Azi);
 
     if(index!==next){
-        finish = 0;
-        delay = 200;
         FOREGROUND.style.background = "url(background/"+(next)+".png) no-repeat fixed center";
         FOREGROUND.style.backgroundSize = "cover";
         FOREGROUND.style.zIndex = "-1";
-        anim = window.setTimeout(setBGCSS, 200);
+        window.setTimeout(setBGCSS, 200);
     }
 }
 
